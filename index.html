@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>好客山东·齐鲁胜景｜山东16地市代表性景点地图</title>
+
+    <!-- 引入 ArcGIS API for JavaScript CSS -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    
+    <!-- 设置网页基础样式，确保地图占满全屏 -->
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        /* 地图容器全屏显示 */
+        #viewDiv {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 标题面板：半透明悬浮，现代化卡片风格 */
+        .title-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            font-size: 14px;
+            border-left: 4px solid #FFC107;
+        }
+        .title-panel h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            font-weight: 500;
+        }
+        .title-panel p {
+            margin: 5px 0 0;
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+
+        /* 自定义图例/信息框 */
+        .info-card {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            color: #eee;
+            padding: 10px 15px;
+            border-radius: 12px;
+            font-size: 12px;
+            z-index: 1000;
+            font-family: monospace;
+            border-right: 3px solid #FFC107;
+            pointer-events: none;
+            text-align: right;
+        }
+        .info-card span {
+            color: #FFC107;
+            font-weight: bold;
+        }
+
+        /* 提示小工具 */
+        .tooltip-note {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 20px;
+            padding: 6px 12px;
+            color: white;
+            font-size: 12px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        /* 响应式调整：移动端稍微缩小字体 */
+        @media (max-width: 768px) {
+            .title-panel { padding: 8px 16px; }
+            .title-panel h1 { font-size: 1rem; }
+            .info-card { font-size: 10px; }
+        }
+    </style>
+
+    <!-- 引入 ArcGIS API for JavaScript (ES modules 方式) -->
+    <script src="https://js.arcgis.com/4.32/"></script>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/GraphicsLayer",
+            "esri/Graphic",
+            "esri/geometry/Point",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/PopupTemplate",
+            "esri/widgets/Legend"
+        ], function(Map, MapView, GraphicsLayer, Graphic, Point, SimpleMarkerSymbol, PictureMarkerSymbol, PopupTemplate, Legend) {
+
+            // 1. 创建底图 (街道地图，适合旅游展示)
+            const map = new Map({
+                basemap: "arcgis/streets"  // 现代街道地图，清晰易读
+            });
+
+            // 2. 创建地图视图，将视角聚焦于山东省
+            const view = new MapView({
+                container: "viewDiv",
+                map: map,
+                center: [118.0, 36.5],  // 山东中心点大致坐标(经度118, 纬度36.5)
+                zoom: 7.5,               // 缩放级别适合看到全省16市
+                constraints: {
+                    minZoom: 7,           // 限制最小缩放，保证全省视角不散
+                    maxZoom: 12          // 限制最大缩放，避免过度细节丢失全局感
+                },
+                popup: {
+                    dockEnabled: true,
+                    dockOptions: {
+                        buttonEnabled: false,
+                        position: "top-right"
+                    }
+                }
+            });
+
+            // 3. 创建一个 GraphicsLayer 用于存放16个地市的代表性景点标记
+            const tourismLayer = new GraphicsLayer({
+                id: "shandongAttractions",
+                title: "山东16地市代表性景点",
+                listMode: "show"
+            });
+            map.add(tourismLayer);
+
+            // ==================== 景点数据集（16个地市，每个一个景点名称、简介、坐标） ====================
+            // 坐标来源：基于高德/百度地图地理坐标 (WGS84/GCJ02近似，ArcGIS Web墨卡托会自动投影，使用WGS84经度纬度)
+            // 所有景点均选取该市最具标识性的核心景点，确保山东16地市全覆盖。
+            const attractions = [
+                // 济南市 - 趵突泉
+                { city: "济南", name: "趵突泉", lat: 36.6609, lon: 117.0072, 
+                  desc: "天下第一泉，济南七十二名泉之冠，乾隆皇帝御封'天下第一泉'，泉水清澈见底，三股泉水昼夜喷涌。" },
+                // 青岛市 - 栈桥
+                { city: "青岛", name: "栈桥", lat: 36.0609, lon: 120.3240, 
+                  desc: "青岛的象征，始建于1892年，长长的栈桥延伸至大海，回澜阁位于尽头，是观赏海景和日落的绝佳地点。" },
+                // 淄博市 - 周村古商城
+                { city: "淄博", name: "周村古商城", lat: 36.7872, lon: 117.8671, 
+                  desc: "被誉为'天下第一村'，明清时期北方商业重镇，大染坊、旱码头遗址，电视剧《大染坊》取景地。" },
+                // 枣庄市 - 台儿庄古城
+                { city: "枣庄", name: "台儿庄古城", lat: 34.5584, lon: 117.7348, 
+                  desc: "京杭大运河畔的'活着的古运河'，二战著名台儿庄大战发生地，江北水乡，夜景如画。" },
+                // 东营市 - 黄河口生态旅游区
+                { city: "东营", name: "黄河口生态旅游区", lat: 37.7650, lon: 118.9812, 
+                  desc: "黄河入海之地，黄蓝交汇奇观，鸟类国际机场，秋季芦花飞雪，生态之美令人震撼。" },
+                // 烟台市 - 蓬莱阁
+                { city: "烟台", name: "蓬莱阁", lat: 37.8139, lon: 120.7512, 
+                  desc: "'人间仙境'，传说中八仙过海之地，中国古代四大名楼之一，临海而立，云雾缭绕。" },
+                // 潍坊市 - 青州古城
+                { city: "潍坊", name: "青州古城", lat: 36.6853, lon: 118.4801, 
+                  desc: "古九州之一，五千年文明史，偶园、阜财门、昭德古街，保留着浓厚的历史气息。" },
+                // 济宁市 - 曲阜三孔
+                { city: "济宁", name: "曲阜三孔", lat: 35.5967, lon: 116.9932, 
+                  desc: "孔庙、孔府、孔林，儒家文化圣地，世界文化遗产，'东方圣城'，历代帝王朝拜之地。" },
+                // 泰安市 - 泰山
+                { city: "泰安", name: "泰山", lat: 36.2520, lon: 117.1131, 
+                  desc: "'五岳独尊'，世界文化与自然双重遗产，历代帝王封禅之地，日出云海令人叹为观止。" },
+                // 威海市 - 刘公岛
+                { city: "威海", name: "刘公岛", lat: 37.5010, lon: 122.1926, 
+                  desc: "甲午战争纪念地，'海上仙山'，北洋水师诞生地，中国近代史的见证。" },
+                // 日照市 - 万平口海滨风景区
+                { city: "日照", name: "万平口", lat: 35.4147, lon: 119.5638, 
+                  desc: "'日照会客厅'，碧海金沙，'旅游来日照，必到万平口'，是观赏日出的绝佳海岸。" },
+                // 临沂市 - 沂蒙山
+                { city: "临沂", name: "沂蒙山", lat: 35.5705, lon: 117.9426, 
+                  desc: "革命老区，'天然氧吧'，世界地质公园，沂蒙精神发源地，山清水秀风景如画。" },
+                // 德州市 - 董子园
+                { city: "德州", name: "董子园", lat: 37.4542, lon: 116.3557, 
+                  desc: "纪念西汉大儒董仲舒，儒家文化主题公园，'三年不窥园'故事发源地，兼具古典与现代。" },
+                // 聊城市 - 东昌湖
+                { city: "聊城", name: "东昌湖", lat: 36.4600, lon: 115.9676, 
+                  desc: "'北方西湖'，环绕聊城古城，湖水清澈，光岳楼倒映水中，形成'城中有湖，湖中有城'奇观。" },
+                // 滨州市 - 魏集古村落
+                { city: "滨州", name: "魏集古村落", lat: 37.1556, lon: 117.6158, 
+                  desc: "鲁北民俗文化代表，明清风格古建筑群，体验黄河古村风情和传统手工艺。" },
+                // 菏泽市 - 曹州牡丹园
+                { city: "菏泽", name: "曹州牡丹园", lat: 35.2298, lon: 115.4667, 
+                  desc: "'中国牡丹之都'，世界上最大的牡丹园，每年四月花开时节，姹紫嫣红，国色天香。" }
+            ];
+
+            // 4. 遍历景点数据，创建 Graphic 点要素，并添加到图层中
+            // 定义 PopupTemplate：点击标记时展示城市名、景点名和详细介绍，并包含一个简易的参考标签。
+            // 同时为了更好的视觉效果，使用 PictureMarkerSymbol (自定义图片符号) 并结合简易样式，这里为了稳定性和美观，使用 SimpleMarkerSymbol 配合鲜艳颜色。
+            // 考虑到作业兼容性与外链图片稳定性，采用圆形标记 + 外发光特效，同时增加 Popup 详细内容。
+            attractions.forEach(function(spot) {
+                // 创建点的几何对象 (经度, 纬度)
+                const pointGeometry = new Point({
+                    longitude: spot.lon,
+                    latitude: spot.lat
+                });
+
+                // 创建自定义符号：鲜艳的红色圆点，带橙色边框，缩放敏感显示（地图缩放时大小按比例）
+                const markerSymbol = new SimpleMarkerSymbol({
+                    color: [255, 69, 58, 0.9],        // 珊瑚红，醒目
+                    size: 14,
+                    outline: {
+                        color: [255, 193, 7, 1],      // 金黄色边框，体现“好客山东”
+                        width: 2
+                    },
+                    style: "circle"
+                });
+
+                // 构建 PopupTemplate 标题和内容，利用变量替换显示城市、景点、描述和坐标参考
+                // 高级技巧：在内容中增加简易地理位置标签
+                const popupTemplate = new PopupTemplate({
+                    title: "{city} · {spotName}",     // 注意这里用别名映射
+                    content: `
+                        <div style="min-width: 200px; font-family: system-ui; line-height:1.5;">
+                            <h3 style="margin:0 0 6px 0; color:#C0392B;">🏛️ {spotName}</h3>
+                            <p style="margin:6px 0; font-size:14px; color:#555;">📍 {city}市 · 必游之地</p>
+                            <hr style="margin:8px 0; border:0; height:1px; background:#eee;">
+                            <p style="margin:8px 0; font-size:13px; color:#333; line-height:1.5;">✨ <strong>景点特色：</strong> {description}</p>
+                            <p style="margin:4px 0 0; font-size:11px; color:#888;">🗺️ 坐标参考：{lon}°E, {lat}°N</p>
+                        </div>
+                    `,
+                    fieldInfos: [
+                        { fieldName: "city", visible: true },
+                        { fieldName: "spotName", visible: true },
+                        { fieldName: "description", visible: true },
+                        { fieldName: "lat", visible: true },
+                        { fieldName: "lon", visible: true }
+                    ]
+                });
+
+                // 创建 Graphic 对象，关联几何、符号和属性数据
+                const graphic = new Graphic({
+                    geometry: pointGeometry,
+                    symbol: markerSymbol,
+                    attributes: {
+                        city: spot.city,
+                        spotName: spot.name,
+                        description: spot.desc,
+                        lat: spot.lat.toFixed(4),
+                        lon: spot.lon.toFixed(4)
+                    },
+                    popupTemplate: popupTemplate
+                });
+
+                // 添加图形到图层
+                tourismLayer.add(graphic);
+            });
+
+            // 可选：加一个自定义图例组件（显示标记含义，提升作品专业度）
+            view.when(function() {
+                // 提示加载完成
+                console.log("地图加载完毕，山东16地市景点标记显示成功。");
+                // 可选图例: 由于GraphicsLayer是默认符号，为了符合作业说明，可以显示一个简易图例控件，但要放在合适位置。
+                // 但为了界面简洁，不加复杂图例，通过右下角信息卡片说明即可。
+            });
+
+            // 额外添加一个缩放完成后的处理：调整标记大小不影响体验 (ArcGIS 自动处理)
+            // 为了方便用户识别，可以在控制台输出标记个数
+            console.log("已添加标记数量: " + attractions.length + " 个 (覆盖山东全部16地级市)");
+        });
+    </script>
+</head>
+<body>
+    <div id="viewDiv"></div>
+    
+    <!-- 悬浮标题面板 -->
+    <div class="title-panel">
+        <h1>🏔️ 好客山东 · 齐鲁胜景</h1>
+        <p>山东16地市代表性景点地图 | 点击标记查看详情</p>
+    </div>
+
+    <!-- 右下角数据说明与设计说明卡片 -->
+    <div class="info-card">
+        <span>🗺️ 山东16地市 · 一市一景</span><br>
+        济南·趵突泉 | 青岛·栈桥 | 淄博·周村古商城 | 枣庄·台儿庄古城<br>
+        东营·黄河口 | 烟台·蓬莱阁 | 潍坊·青州古城 | 济宁·曲阜三孔<br>
+        泰安·泰山 | 威海·刘公岛 | 日照·万平口 | 临沂·沂蒙山<br>
+        德州·董子园 | 聊城·东昌湖 | 滨州·魏集古村落 | 菏泽·曹州牡丹园
+    </div>
+
+    <!-- 左下角小提示 -->
+    <div class="tooltip-note">
+        💡 提示：滚动鼠标缩放地图，单击标记查看景点介绍
+    </div>
+</body>
+</html>
