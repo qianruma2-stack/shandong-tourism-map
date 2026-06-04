@@ -3,187 +3,373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>好客山东·齐鲁胜景｜山东16地市代表性景点地图</title>
+    <title>好客山东·齐鲁胜景｜山东16地市代表性景点地图（含测距）</title>
     <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; overflow: hidden; }
-        #viewDiv { width: 100%; height: 100%; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+        }
+        #viewDiv {
+            width: 100%;
+            height: 100%;
+        }
+        /* 左侧面板（标题+景点列表） */
         .left-panel {
-            position: absolute; top: 20px; left: 20px; width: 280px;
-            background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
-            border-radius: 20px; padding: 12px 15px; z-index: 1000;
-            color: white; border-left: 4px solid #FFC107;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            max-width: calc(100% - 40px);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 12px 15px;
+            z-index: 1000;
+            color: white;
+            border-left: 4px solid #FFC107;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            pointer-events: auto;
+            font-size: 13px;
         }
-        .left-panel h1 { font-size: 1.3rem; margin-bottom: 5px; }
-        .attractions-list { max-height: 280px; overflow-y: auto; }
+        .left-panel h1 {
+            font-size: 1.3rem;
+            margin: 0 0 5px 0;
+        }
+        .left-panel .sub {
+            font-size: 0.7rem;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            border-bottom: 1px dashed rgba(255,255,255,0.3);
+            padding-bottom: 6px;
+        }
+        .attractions-list {
+            max-height: 280px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 5px;
+            padding-right: 5px;
+        }
+        .attractions-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .attractions-list::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        .attractions-list::-webkit-scrollbar-thumb {
+            background: #FFC107;
+            border-radius: 4px;
+        }
         .list-item {
-            display: inline-block; width: calc(50% - 6px); margin: 4px 3px;
-            background: rgba(255,255,255,0.1); border-radius: 20px;
-            padding: 4px 10px; cursor: pointer; text-align: center; font-size: 11px;
+            display: inline-block;
+            width: calc(50% - 6px);
+            margin: 4px 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+            font-size: 11px;
         }
-        .list-item:hover { background: #FFC107; color: #333; }
+        .list-item:hover {
+            background: #FFC107;
+            color: #333;
+            transform: scale(1.02);
+        }
+        /* 搜索框 */
         .search-panel {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
-            padding: 6px 15px; border-radius: 50px; z-index: 1001;
-            display: flex; gap: 8px;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 6px 15px;
+            border-radius: 50px;
+            z-index: 1001;
+            display: flex;
+            gap: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .search-panel input { padding: 6px 12px; border-radius: 30px; border: none; width: 200px; }
-        .search-panel button, .action-btn {
-            padding: 6px 14px; border-radius: 30px; border: none;
-            background: #FFC107; font-weight: bold; cursor: pointer;
+        .search-panel input {
+            padding: 6px 12px;
+            border-radius: 30px;
+            border: none;
+            outline: none;
+            width: 200px;
+            font-size: 13px;
         }
-        .button-group { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
+        .search-panel button {
+            padding: 6px 14px;
+            border-radius: 30px;
+            border: none;
+            background: #FFC107;
+            color: #333;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .search-panel button:hover {
+            background: #ffda6a;
+        }
+        /* 右下角按钮组（随机 + 测距） */
+        .button-group {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .action-btn {
+            background: #FFC107;
+            border: none;
+            border-radius: 40px;
+            padding: 8px 16px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        .action-btn:hover {
+            background: #ffda6a;
+            transform: scale(1.02);
+        }
+        .active-measure {
+            background: #e67e22;
+            color: white;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #e67e22;
+        }
         .tooltip-note {
-            position: absolute; bottom: 20px; left: 20px;
-            background: rgba(0,0,0,0.5); border-radius: 20px;
-            padding: 5px 12px; color: white; font-size: 11px;
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 20px;
+            padding: 5px 12px;
+            color: white;
+            font-size: 11px;
+            z-index: 1000;
+            pointer-events: none;
         }
-        @media (max-width: 800px) { .left-panel { width: 260px; } .search-panel input { width: 140px; } }
+        @media (max-width: 800px) {
+            .left-panel { width: 260px; }
+            .list-item { width: calc(100% - 6px); }
+            .search-panel input { width: 140px; }
+        }
     </style>
     <script src="https://js.arcgis.com/4.32/"></script>
     <script>
         require([
-            "esri/Map", "esri/views/MapView", "esri/layers/GraphicsLayer",
-            "esri/Graphic", "esri/geometry/Point", "esri/symbols/SimpleMarkerSymbol",
-            "esri/PopupTemplate", "esri/widgets/BasemapToggle", "esri/widgets/DistanceMeasurement2D"
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/GraphicsLayer",
+            "esri/Graphic",
+            "esri/geometry/Point",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/PopupTemplate",
+            "esri/widgets/BasemapToggle",
+            "esri/widgets/DistanceMeasurement2D"   // 测距工具
         ], function(Map, MapView, GraphicsLayer, Graphic, Point, SimpleMarkerSymbol, PopupTemplate, BasemapToggle, DistanceMeasurement2D) {
 
+            // ---------- 1. 初始化地图 ----------
             const map = new Map({ basemap: "arcgis/streets" });
             const view = new MapView({
-                container: "viewDiv", map: map,
-                center: [118.0, 36.5], zoom: 7.5,
-                constraints: { minZoom: 7, maxZoom: 12 }
+                container: "viewDiv",
+                map: map,
+                center: [118.0, 36.5],
+                zoom: 7.5,
+                constraints: { minZoom: 7, maxZoom: 12 },
+                popup: { dockEnabled: true, dockOptions: { buttonEnabled: false, position: "top-right" } }
             });
 
-            // 景点数据（共16个，描述精简但完整）
+            // ---------- 2. 景点数据（详细描述）----------
             const attractions = [
-                { city: "济南", name: "趵突泉", lat: 36.6609, lon: 117.0072, desc: "趵突泉位居济南七十二名泉之首，被誉为天下第一泉。乾隆皇帝南巡时曾册封为天下第一泉。公园内还有李清照纪念堂、万竹园等古迹，是济南泉城文化的核心象征。" },
-                { city: "青岛", name: "栈桥", lat: 36.0609, lon: 120.3240, desc: "青岛栈桥始建于1892年，是青岛最早的军事专用人工码头，如今已成为青岛的标志性建筑。栈桥全长440米，尽头是双层飞檐八角亭阁回澜阁。漫步桥上，可欣赏海鸥翔集、碧波荡漾，是游客必到的打卡地。" },
-                { city: "淄博", name: "周村古商城", lat: 36.7872, lon: 117.8671, desc: "周村古商城素有天下第一村之称，是明清时期北方重要的商业重镇，也是鲁商文化的发源地。古街两侧保留着大量明清建筑，瑞蚨祥、大染坊等老字号仍可见证当年的繁华。" },
-                { city: "枣庄", name: "台儿庄古城", lat: 34.5584, lon: 117.7348, desc: "台儿庄古城坐落于京杭大运河畔，被世界旅游组织称为活着的古运河。城内拥有3公里古运河河道，15公里水街水巷，是中国国内规模最大的水乡古城。夜晚灯火璀璨，船妹子摇橹歌声悠扬。" },
-                { city: "东营", name: "黄河口生态旅游区", lat: 37.7650, lon: 118.9812, desc: "黄河口生态区位于黄河入海口，这里有世界上最年轻、最完整的湿地生态系统。可以观赏到黄蓝交汇的奇观，秋季芦花飞雪，数百万只候鸟在此栖息，被称为鸟类国际机场。" },
-                { city: "烟台", name: "蓬莱阁", lat: 37.8139, lon: 120.7512, desc: "蓬莱阁始建于北宋，坐落在丹崖山巅，与黄鹤楼、岳阳楼、滕王阁并称中国古代四大名楼。因八仙过海的传说和海市蜃楼的奇观闻名海内外，感受人间仙境的魅力。" },
-                { city: "潍坊", name: "青州古城", lat: 36.6853, lon: 118.4801, desc: "青州为古九州之一，有7000余年的发展史和5000余年的文明史。古城内保存有偶园、阜财门、昭德古街等大量明清建筑，可以品味原汁原味的北方古城生活。" },
-                { city: "济宁", name: "曲阜三孔", lat: 35.5967, lon: 116.9932, desc: "曲阜三孔包括孔庙、孔府、孔林，是祭祀孔子及孔子后代居住、安息的建筑群。1994年被列入世界文化遗产。这里是儒家文化的圣地，影响深远。" },
-                { city: "泰安", name: "泰山", lat: 36.2520, lon: 117.1131, desc: "泰山有五岳独尊之称，是首个世界文化与自然双重遗产。古代帝王如秦始皇、汉武帝等均在此举行封禅大典。日出云海、晚霞夕照、黄河金带是泰山四大奇观。" },
-                { city: "威海", name: "刘公岛", lat: 37.5010, lon: 122.1926, desc: "刘公岛是甲午战争的见证者，岛上保留着北洋水师提督署、水师学堂、丁汝昌寓所等历史建筑。岛上森林覆盖率达87%，有海上仙山的美誉。" },
-                { city: "日照", name: "万平口", lat: 35.4147, lon: 119.5638, desc: "万平口海滨风景区是日照的城市会客厅，拥有5公里优质沙滩，沙细水清，是蓝天、碧海、金沙滩的代表。清晨观海上日出，景色壮阔，令人心旷神怡。" },
-                { city: "临沂", name: "沂蒙山", lat: 35.5705, lon: 117.9426, desc: "沂蒙山是世界地质公园，国家5A级景区，被誉为天然氧吧。这里不仅是红色革命老区（沂蒙精神发源地），还拥有中国最长的森林悬崖栈道。" },
-                { city: "德州", name: "董子园", lat: 37.4542, lon: 116.3557, desc: "董子园是为纪念西汉大儒董仲舒而建，董仲舒提出罢黜百家，独尊儒术，对中华文化影响深远。景区以儒家文化为主题，是感受国学文化的好去处。" },
-                { city: "聊城", name: "东昌湖", lat: 36.4600, lon: 115.9676, desc: "东昌湖又名胭脂湖，水域面积约6.3平方公里，是北方最大的城市内陆湖泊，有北方西湖之称。形成城中有湖，湖中有城的独特格局。" },
-                { city: "滨州", name: "魏集古村落", lat: 37.1556, lon: 117.6158, desc: "魏集古村落位于黄河岸边，是一处复原明清鲁北民居风貌的古镇。景区内建有手工作坊街、风味小吃街，可体验传统豆腐、酿酒、织布等工艺。" },
-                { city: "菏泽", name: "曹州牡丹园", lat: 35.2298, lon: 115.4667, desc: "曹州牡丹园是世界面积最大、品种最多的牡丹园，有牡丹品种1200余个。每年4月中旬至5月上旬为牡丹花期，国色天香，菏泽因此被誉为中国牡丹之都。" }
+                { city: "济南", name: "趵突泉", lat: 36.6609, lon: 117.0072, desc: "趵突泉位居济南七十二名泉之首，被誉为“天下第一泉”。泉水从地下石灰岩溶洞中涌出，三股泉水昼夜喷涌，水盛时高达数尺。乾隆皇帝南巡时曾册封为“天下第一泉”。公园内还有李清照纪念堂、万竹园等古迹，是济南“泉城”文化的核心象征。" },
+                { city: "青岛", name: "栈桥", lat: 36.0609, lon: 120.3240, desc: "青岛栈桥始建于1892年，是青岛最早的军事专用人工码头，如今已成为青岛的标志性建筑。栈桥全长440米，尽头是双层飞檐八角亭阁——“回澜阁”。漫步桥上，可欣赏海鸥翔集、碧波荡漾，傍晚时分落日与海景交相辉映，是游客必到的打卡地。" },
+                { city: "淄博", name: "周村古商城", lat: 36.7872, lon: 117.8671, desc: "周村古商城素有“天下第一村”之称，是明清时期北方重要的商业重镇，也是鲁商文化的发源地。古街两侧保留着大量明清建筑，瑞蚨祥、大染坊等老字号仍可见证当年的繁华。电视剧《大染坊》《旱码头》均在此取景，被誉为“中国活着的古商业街博物馆”。" },
+                { city: "枣庄", name: "台儿庄古城", lat: 34.5584, lon: 117.7348, desc: "台儿庄古城坐落于京杭大运河畔，被世界旅游组织称为“活着的古运河”。城内拥有3公里古运河河道，15公里水街水巷，是中国国内规模最大的水乡古城。夜晚灯火璀璨，船妹子摇橹歌声悠扬。同时这里是台儿庄大战的发生地，融合了历史沧桑与江北水乡风情。" },
+                { city: "东营", name: "黄河口生态旅游区", lat: 37.7650, lon: 118.9812, desc: "黄河口生态区位于黄河入海口，这里有世界上最年轻、最完整的湿地生态系统。可以观赏到“黄蓝交汇”的奇观——黄河浑浊的河水与碧蓝的海水相互碰撞。秋季芦花飞雪，数百万只候鸟在此栖息，被称为“鸟类国际机场”。景区还提供游船、泥滩捉蟹等体验。" },
+                { city: "烟台", name: "蓬莱阁", lat: 37.8139, lon: 120.7512, desc: "蓬莱阁始建于北宋，坐落在丹崖山巅，与黄鹤楼、岳阳楼、滕王阁并称中国古代四大名楼。因“八仙过海”的传说和“海市蜃楼”的奇观闻名海内外。临海而立，云雾缭绕，登阁可远眺长山列岛，感受“人间仙境”的魅力。景区内还有戚继光纪念馆、古船博物馆。" },
+                { city: "潍坊", name: "青州古城", lat: 36.6853, lon: 118.4801, desc: "青州为古九州之一，有7000余年的发展史和5000余年的文明史。古城内保存有偶园、阜财门、昭德古街等大量明清建筑。其中昭德古街是首批中国历史文化名街，街边老店铺仍沿用旧时木插板门。漫步青石板路，可以品味原汁原味的北方古城生活。" },
+                { city: "济宁", name: "曲阜三孔", lat: 35.5967, lon: 116.9932, desc: "曲阜三孔包括孔庙、孔府、孔林，是祭祀孔子及孔子后代居住、安息的建筑群。1994年被列入世界文化遗产。孔庙是历代帝王祭祀孔子的庙宇，建筑宏伟，碑刻林立；孔府是孔子嫡系后代居住的府邸；孔林则是延续时间最长的家族墓地。这里是儒家文化的圣地，影响深远。" },
+                { city: "泰安", name: "泰山", lat: 36.2520, lon: 117.1131, desc: "泰山有“五岳独尊”之称，是首个世界文化与自然双重遗产。古代帝王如秦始皇、汉武帝等均在此举行封禅大典。登山沿途有岱庙、红门、中天门、南天门、玉皇顶等众多古迹。日出云海、晚霞夕照、黄河金带是泰山四大奇观。泰山石刻遍布，堪称中国书法艺术的宝库。" },
+                { city: "威海", name: "刘公岛", lat: 37.5010, lon: 122.1926, desc: "刘公岛是甲午战争的见证者，岛上保留着北洋水师提督署、水师学堂、丁汝昌寓所等历史建筑。中国甲午战争博物馆陈列了大量文物，讲述北洋水师的兴衰。岛上森林覆盖率达87%，有“海上仙山”的美誉。登岛可俯瞰威海湾，感受历史与自然的双重洗礼。" },
+                { city: "日照", name: "万平口", lat: 35.4147, lon: 119.5638, desc: "万平口海滨风景区是日照的城市会客厅，拥有5公里优质沙滩，沙细水清，是“蓝天、碧海、金沙滩”的代表。景区内设有潮汐塔、婚庆公园、儿童戏水区等设施。这里是中国帆船运动训练基地，每年举办多项水上赛事。清晨观海上日出，景色壮阔，令人心旷神怡。" },
+                { city: "临沂", name: "沂蒙山", lat: 35.5705, lon: 117.9426, desc: "沂蒙山是世界地质公园，国家5A级景区，被誉为“天然氧吧”。主峰龟蒙顶海拔1156米，是山东第二高峰。这里不仅是红色革命老区（沂蒙精神发源地），还拥有中国最长的森林悬崖栈道和世界最大的山体石雕——老寿星。春季山花烂漫，秋季层林尽染，景色四季皆宜。" },
+                { city: "德州", name: "董子园", lat: 37.4542, lon: 116.3557, desc: "董子园是为纪念西汉大儒董仲舒而建，董仲舒提出“罢黜百家，独尊儒术”，对中华文化影响深远。景区以儒家文化为主题，建有董子读书台、三策书院、春秋繁露广场等。园内湖光潋滟，亭台楼阁，常有汉服爱好者在此举办传统礼仪活动，是感受国学文化的好去处。" },
+                { city: "聊城", name: "东昌湖", lat: 36.4600, lon: 115.9676, desc: "东昌湖又名胭脂湖，水域面积约6.3平方公里，是北方最大的城市内陆湖泊，有“北方西湖”之称。湖水环绕聊城古城，形成“城中有湖，湖中有城”的独特格局。光岳楼矗立在古城中央，登楼可俯瞰全景。夜晚湖畔灯光璀璨，乘画舫游湖，别有一番风味。" },
+                { city: "滨州", name: "魏集古村落", lat: 37.1556, lon: 117.6158, desc: "魏集古村落位于黄河岸边，是一处复原明清鲁北民居风貌的古镇。景区内建有手工作坊街、风味小吃街、民宿客栈等，可体验传统豆腐、酿酒、织布等工艺。同时还能欣赏黄河古村的夯土建筑和木雕艺术。每逢节假日，会有绣楼招亲、古彩戏法等民俗表演，充满浓郁的黄河文化气息。" },
+                { city: "菏泽", name: "曹州牡丹园", lat: 35.2298, lon: 115.4667, desc: "曹州牡丹园是世界面积最大、品种最多的牡丹园，有牡丹品种1200余个，芍药品种600余个。每年4月中旬至5月上旬为牡丹花期，红、白、粉、紫、黑等各色牡丹争奇斗艳，花香四溢。园内还建有国花馆、牡丹广场等设施。菏泽因此被誉为“中国牡丹之都”，与洛阳牡丹齐名。" }
             ];
 
-            const layer = new GraphicsLayer();
-            map.add(layer);
-            const items = [];
+            const tourismLayer = new GraphicsLayer({ id: "attractions" });
+            map.add(tourismLayer);
+            const graphicItems = [];
 
             const popupTemplate = new PopupTemplate({
                 title: "{city} · {name}",
-                content: `<div style="max-width:280px;"><p><strong>景点特色</strong><br>{desc}</p><p>📍 {lon}°E, {lat}°N</p></div>`
+                content: `<div style="max-width: 300px; line-height: 1.5; font-size: 13px;">
+                            <p style="margin:0 0 8px;"><strong>📖 景点特色</strong><br>{desc}</p>
+                            <p style="margin:0; font-size:11px; color:#888;">📍 {lon}°E, {lat}°N</p>
+                          </div>`,
+                fieldInfos: [
+                    { fieldName: "city", visible: true },
+                    { fieldName: "name", visible: true },
+                    { fieldName: "desc", visible: true },
+                    { fieldName: "lon", visible: true },
+                    { fieldName: "lat", visible: true }
+                ]
             });
 
             attractions.forEach(spot => {
                 const point = new Point({ longitude: spot.lon, latitude: spot.lat });
                 const symbol = new SimpleMarkerSymbol({
-                    color: [255, 69, 58, 0.9], size: 14,
-                    outline: { color: [255, 193, 7, 1], width: 2 }
+                    color: [255, 69, 58, 0.9],
+                    size: 14,
+                    outline: { color: [255, 193, 7, 1], width: 2 },
+                    style: "circle"
                 });
                 const graphic = new Graphic({
-                    geometry: point, symbol: symbol,
-                    attributes: { city: spot.city, name: spot.name, desc: spot.desc, lat: spot.lat.toFixed(4), lon: spot.lon.toFixed(4) },
+                    geometry: point,
+                    symbol: symbol,
+                    attributes: {
+                        city: spot.city,
+                        name: spot.name,
+                        desc: spot.desc,
+                        lat: spot.lat.toFixed(4),
+                        lon: spot.lon.toFixed(4)
+                    },
                     popupTemplate: popupTemplate
                 });
-                layer.add(graphic);
-                items.push({ graphic, city: spot.city, name: spot.name, lat: spot.lat, lon: spot.lon });
+                tourismLayer.add(graphic);
+                graphicItems.push({
+                    graphic, city: spot.city, name: spot.name,
+                    lat: spot.lat, lon: spot.lon, desc: spot.desc
+                });
             });
 
-            // 底图切换
+            // ---------- 3. 底图切换 ----------
             const toggle = new BasemapToggle({ view: view, nextBasemap: "satellite" });
             view.ui.add(toggle, "bottom-right");
 
-            // 测距功能
+            // ---------- 4. 搜索功能 ----------
+            const searchInput = document.getElementById("searchInput");
+            const searchBtn = document.getElementById("searchBtn");
+            function searchLocation() {
+                let keyword = searchInput.value.trim();
+                if (keyword === "") { alert("请输入城市名或景点名"); return; }
+                let matched = graphicItems.find(item => item.name === keyword || item.city === keyword);
+                if (!matched) matched = graphicItems.find(item => item.name.includes(keyword) || item.city.includes(keyword));
+                if (matched) {
+                    view.goTo({ center: [matched.lon, matched.lat], zoom: 11, speed: 0.8 })
+                        .then(() => view.popup.open({ features: [matched.graphic], location: matched.graphic.geometry }));
+                } else {
+                    alert(`未找到“${keyword}”，请尝试其他关键词。`);
+                }
+            }
+            searchBtn.addEventListener("click", searchLocation);
+            searchInput.addEventListener("keypress", e => { if (e.key === "Enter") searchLocation(); });
+
+            // ---------- 5. 随机景点 ----------
+            const randomBtn = document.getElementById("randomBtn");
+            randomBtn.addEventListener("click", () => {
+                const randomIndex = Math.floor(Math.random() * graphicItems.length);
+                const item = graphicItems[randomIndex];
+                view.goTo({ center: [item.lon, item.lat], zoom: 11, speed: 0.8 })
+                    .then(() => view.popup.open({ features: [item.graphic], location: item.graphic.geometry }));
+            });
+
+            // ---------- 6. 左侧列表点击 ----------
+            const listContainer = document.getElementById("attractionsList");
+            graphicItems.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "list-item";
+                div.textContent = `${item.city}·${item.name}`;
+                div.addEventListener("click", () => {
+                    view.goTo({ center: [item.lon, item.lat], zoom: 11, speed: 0.8 })
+                        .then(() => view.popup.open({ features: [item.graphic], location: item.graphic.geometry }));
+                });
+                listContainer.appendChild(div);
+            });
+
+            // ---------- 7. 测距功能 ----------
             let measureWidget = null;
             const measureBtn = document.getElementById("measureBtn");
-            function toggleMeasure() {
+
+            function activateMeasurement() {
                 if (measureWidget) {
+                    // 如果已经存在，先销毁
                     measureWidget.destroy();
                     measureWidget = null;
                     measureBtn.classList.remove("active-measure");
-                } else {
-                    measureWidget = new DistanceMeasurement2D({ view: view, unit: "metric" });
-                    view.ui.add(measureWidget, "top-right");
-                    measureWidget.start();
-                    measureBtn.classList.add("active-measure");
-                    measureWidget.watch("state", (val) => {
-                        if (val === "ready" && measureWidget && !measureWidget.active) {
+                    return;
+                }
+                // 创建测距小部件，添加到视图
+                measureWidget = new DistanceMeasurement2D({
+                    view: view,
+                    unit: "metric"   // 公制单位（公里/米）
+                });
+                view.ui.add(measureWidget, "top-right"); // 放在右上角，不遮挡左侧面板
+                measureWidget.start();
+                measureBtn.classList.add("active-measure");
+
+                // 监听测距完成或清除事件，以便用户点击按钮时能正常关闭
+                measureWidget.watch("state", (newValue) => {
+                    if (newValue === "ready" && measureWidget) {
+                        // 如果测距工具被手动关闭（点击X），同步按钮样式
+                        if (!measureWidget.active && measureBtn.classList.contains("active-measure")) {
                             measureBtn.classList.remove("active-measure");
                             measureWidget.destroy();
                             measureWidget = null;
                         }
-                    });
-                }
+                    }
+                });
             }
-            measureBtn.addEventListener("click", toggleMeasure);
 
-            // 搜索
-            const searchInput = document.getElementById("searchInput");
-            const searchBtn = document.getElementById("searchBtn");
-            function search() {
-                let kw = searchInput.value.trim();
-                if (!kw) { alert("请输入城市名或景点名"); return; }
-                let matched = items.find(i => i.name === kw || i.city === kw);
-                if (!matched) matched = items.find(i => i.name.includes(kw) || i.city.includes(kw));
-                if (matched) {
-                    view.goTo({ center: [matched.lon, matched.lat], zoom: 11 })
-                        .then(() => view.popup.open({ features: [matched.graphic] }));
-                } else { alert("未找到"); }
-            }
-            searchBtn.onclick = search;
-            searchInput.onkeypress = e => { if (e.key === "Enter") search(); };
+            measureBtn.addEventListener("click", activateMeasurement);
 
-            // 随机
-            document.getElementById("randomBtn").onclick = () => {
-                const idx = Math.floor(Math.random() * items.length);
-                const item = items[idx];
-                view.goTo({ center: [item.lon, item.lat], zoom: 11 })
-                    .then(() => view.popup.open({ features: [item.graphic] }));
-            };
-
-            // 左侧列表
-            const container = document.getElementById("attractionsList");
-            items.forEach(item => {
-                const div = document.createElement("div");
-                div.className = "list-item";
-                div.textContent = `${item.city}·${item.name}`;
-                div.onclick = () => {
-                    view.goTo({ center: [item.lon, item.lat], zoom: 11 })
-                        .then(() => view.popup.open({ features: [item.graphic] }));
-                };
-                container.appendChild(div);
-            });
-
-            console.log("地图加载完成，测距功能可用");
+            console.log(`地图加载完成，共 ${graphicItems.length} 个景点，测距功能已就绪。`);
         });
     </script>
 </head>
 <body>
     <div id="viewDiv"></div>
+
+    <!-- 左侧面板 -->
     <div class="left-panel">
         <h1>🏔️ 好客山东 · 齐鲁胜景</h1>
+        <div class="sub">山东16地市代表性景点 | 点击标记/名称查看详情 | 支持测距</div>
         <div class="attractions-list" id="attractionsList"></div>
     </div>
+
+    <!-- 顶部搜索 -->
     <div class="search-panel">
-        <input type="text" id="searchInput" placeholder="搜索城市或景点" autocomplete="off">
+        <input type="text" id="searchInput" placeholder="搜索城市或景点，如：泰山、青岛" autocomplete="off">
         <button id="searchBtn">🔍 搜索</button>
     </div>
+
+    <!-- 右下角按钮组 -->
     <div class="button-group">
         <button id="randomBtn" class="action-btn">🎲 随机景点</button>
         <button id="measureBtn" class="action-btn">📏 测距</button>
     </div>
-    <div class="tooltip-note">💡 提示：点击红色标记查看详情 | 支持搜索/随机/测距 | 右下角可切换底图</div>
+
+    <div class="tooltip-note">
+        💡 提示：点击红色标记查看详情 | 支持搜索/随机/测距 | 点击测距按钮后在地图上连续点击即可测量
+    </div>
 </body>
 </html>
