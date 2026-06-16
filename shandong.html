@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>好客山东·齐鲁胜景｜山东16地市代表性景点地图</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <style>
+        /* ===== 全局 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Microsoft YaHei', sans-serif; }
+        #viewDiv { width: 100%; height: 100%; }
+
+        /* ===== 左侧面板 ===== */
+        .left-panel {
+            position: absolute; top: 20px; left: 20px; width: 280px;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
+            border-radius: 20px; padding: 12px 15px; z-index: 1000;
+            color: white; border-left: 4px solid #FFC107;
+            max-height: calc(100% - 40px); overflow-y: auto;
+        }
+        .left-panel::-webkit-scrollbar { width: 4px; }
+        .left-panel::-webkit-scrollbar-thumb { background: #FFC107; border-radius: 4px; }
+        .left-panel h1 { font-size: 1.2rem; margin: 0 0 5px 0; }
+        .left-panel .sub { font-size: 0.7rem; opacity: 0.8; margin-bottom: 10px; border-bottom: 1px dashed rgba(255,255,255,0.3); padding-bottom: 6px; }
+        .attractions-list { font-size: 12px; line-height: 1.5; }
+        .list-item {
+            display: inline-block; width: calc(50% - 6px); margin: 3px 3px;
+            background: rgba(255,255,255,0.1); border-radius: 20px;
+            padding: 3px 8px; cursor: pointer; text-align: center; font-size: 11px;
+        }
+        .list-item:hover { background: #FFC107; color: #333; }
+
+        /* ===== 搜索栏 ===== */
+        .search-panel {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            padding: 6px 15px; border-radius: 50px; z-index: 1001;
+            display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+        }
+        .search-panel input { padding: 6px 12px; border-radius: 30px; border: none; outline: none; width: 150px; font-size: 13px; }
+        .search-panel select { padding: 6px 12px; border-radius: 30px; border: none; outline: none; font-size: 13px; background: white; cursor: pointer; }
+        .search-panel button { padding: 6px 14px; border-radius: 30px; border: none; background: #FFC107; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .search-panel button:hover { background: #ffda6a; }
+
+        /* ===== 右下角按钮组 ===== */
+        .button-group {
+            position: absolute; bottom: 20px; right: 20px;
+            display: flex; flex-wrap: wrap; gap: 6px; z-index: 1000;
+            max-width: 420px; justify-content: flex-end;
+        }
+        .action-btn {
+            background: #FFC107; border: none; border-radius: 40px; padding: 5px 12px;
+            font-weight: bold; color: #333; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 11px; transition: 0.2s;
+            white-space: nowrap;
+        }
+        .action-btn:hover { background: #ffda6a; transform: scale(1.02); }
+        .active-measure { background: #e67e22; color: white; box-shadow: 0 0 0 2px white, 0 0 0 4px #e67e22; }
+        .route-btn { background: #2196F3; color: white; }
+        .route-btn:hover { background: #64b5f6; }
+        .basemap-btn { background: #9C27B0; color: white; }
+        .basemap-btn:hover { background: #ab47bc; }
+
+        /* ===== 提示 ===== */
+        .tooltip-note {
+            position: absolute; bottom: 20px; left: 20px;
+            background: rgba(0,0,0,0.5); border-radius: 20px;
+            padding: 4px 12px; color: white; font-size: 10px; z-index: 1000;
+            pointer-events: none; line-height: 1.5;
+        }
+        .tooltip-note strong { color: #FFC107; }
+
+        /* ===== 统计 ===== */
+        .stats {
+            position: absolute; bottom: 60px; left: 20px;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+            border-radius: 12px; padding: 5px 14px;
+            color: white; font-size: 11px; z-index: 1000;
+            pointer-events: none; line-height: 1.6;
+        }
+        .stats span { color: #FFC107; font-weight: bold; }
+
+        /* ===== 路线选择器 ===== */
+        .route-selector {
+            position: absolute; bottom: 80px; right: 20px;
+            background: rgba(0,0,0,0.88); backdrop-filter: blur(12px);
+            border-radius: 16px; padding: 15px 20px; z-index: 1000;
+            color: white; min-width: 250px; border: 1px solid rgba(255,255,255,0.15);
+            display: none; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            max-height: 450px; overflow-y: auto;
+        }
+        .route-selector::-webkit-scrollbar { width: 4px; }
+        .route-selector::-webkit-scrollbar-thumb { background: #FFC107; border-radius: 4px; }
+        .route-selector.show { display: block; }
+        .route-selector h4 { margin: 0 0 10px 0; font-size: 14px; color: #FFC107; }
+        .route-option { padding: 7px 12px; margin: 4px 0; border-radius: 10px; cursor: pointer; transition: 0.2s; font-size: 12px; border-left: 3px solid transparent; }
+        .route-option:hover { background: rgba(255,255,255,0.15); border-left-color: #FFC107; }
+        .route-option .route-days { font-size: 10px; color: #aaa; float: right; }
+        .route-close { float: right; cursor: pointer; color: #aaa; font-size: 16px; line-height: 1; }
+        .route-close:hover { color: white; }
+
+        /* ===== 路线详情 ===== */
+        .route-detail {
+            position: absolute; bottom: 180px; right: 20px;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+            border-radius: 16px; padding: 15px 20px; z-index: 999;
+            color: white; min-width: 280px; max-width: 350px;
+            border: 1px solid rgba(255,255,255,0.15);
+            display: none; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            max-height: 400px; overflow-y: auto;
+            font-size: 13px; line-height: 1.6;
+        }
+        .route-detail::-webkit-scrollbar { width: 4px; }
+        .route-detail::-webkit-scrollbar-thumb { background: #FFC107; border-radius: 4px; }
+        .route-detail.show { display: block; }
+        .route-detail h4 { color: #FFC107; margin: 0 0 8px 0; }
+        .route-detail .close-detail { float: right; cursor: pointer; color: #aaa; }
+        .route-detail .close-detail:hover { color: white; }
+
+        /* ===== 弹窗内容 ===== */
+        .popup-content { max-width: 340px; line-height: 1.8; font-size: 14px; padding: 4px 0; }
+        .popup-content .type-badge {
+            display: inline-block; background: #FFC107; color: #333;
+            padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .popup-content .desc-text { margin: 8px 0 4px 0; color: #333; line-height: 1.7; }
+        .popup-content .meta-text { font-size: 12px; color: #555; margin: 2px 0; }
+        .popup-content .coord-text { margin: 4px 0 0 0; font-size: 12px; color: #888; }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white;
+            padding: 8px 24px; border-radius: 40px;
+            z-index: 2000; font-size: 14px;
+            display: none; pointer-events: none;
+            border: 1px solid #FFC107;
+        }
+        .toast.show { display: block; animation: fadeInOut 2s ease forwards; }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+        }
+
+        @media (max-width: 800px) {
+            .left-panel { width: 200px; padding: 8px; }
+            .list-item { width: calc(100% - 4px); font-size: 10px; }
+            .search-panel input { width: 100px; font-size: 11px; }
+            .search-panel select { font-size: 11px; padding: 4px 8px; }
+            .button-group { max-width: 160px; }
+            .action-btn { font-size: 9px; padding: 3px 8px; }
+            .stats { font-size: 10px; bottom: 50px; }
+            .tooltip-note { font-size: 9px; bottom: 14px; }
+        }
+    </style>
+    <script src="https://js.arcgis.com/4.32/"></script>
+    <script>
+        require([
+            "esri/Map", "esri/views/MapView", "esri/layers/GraphicsLayer",
+            "esri/Graphic", "esri/geometry/Point", "esri/geometry/Polyline",
+            "esri/symbols/SimpleMarkerSymbol", "esri/symbols/TextSymbol",
+            "esri/symbols/SimpleLineSymbol", "esri/PopupTemplate",
+            "esri/widgets/DistanceMeasurement2D"
+        ], function(Map, MapView, GraphicsLayer, Graphic, Point, Polyline,
+                    SimpleMarkerSymbol, TextSymbol, SimpleLineSymbol,
+                    PopupTemplate, DistanceMeasurement2D) {
+
+            // ============================================================
+            // 1. 景点数据（16个，信息丰富）
+            // ============================================================
+            var allAttractions = [
+                { city: "济南", name: "趵突泉", lat: 36.6609, lon: 117.0072, type: "文化", duration: "2-3小时", season: "四季皆宜", price: "40元（学生半价）", time: "07:00-19:00", hot: "🔥热门", tips: "建议早晨游览，人少清静，可看到泉水喷涌最佳状态。", desc: "趵突泉位居济南七十二名泉之首，被誉为天下第一泉。乾隆皇帝南巡时曾册封为天下第一泉。公园内还有李清照纪念堂、万竹园等古迹，是济南泉城文化的核心象征。" },
+                { city: "青岛", name: "栈桥", lat: 36.0609, lon: 120.3240, type: "海滨", duration: "1-2小时", season: "夏季最佳", price: "免费", time: "全天开放", hot: "⭐经典", tips: "傍晚时分前往，可欣赏落日余晖下的海鸥与回澜阁。", desc: "青岛栈桥始建于1892年，是青岛最早的军事专用人工码头。栈桥全长440米，尽头是双层飞檐八角亭阁回澜阁。漫步桥上可欣赏海鸥翔集、碧波荡漾，是青岛的标志性建筑。" },
+                { city: "淄博", name: "周村古商城", lat: 36.7872, lon: 117.8671, type: "历史", duration: "2-3小时", season: "春秋季", price: "免费（部分景点收费）", time: "08:30-17:30", hot: "⭐经典", tips: "可体验传统手工制作，品尝周村烧饼。", desc: "周村古商城素有天下第一村之称，是明清时期北方重要的商业重镇。古街两侧保留着大量明清建筑，瑞蚨祥、大染坊等老字号仍可见证当年的繁华。" },
+                { city: "枣庄", name: "台儿庄古城", lat: 34.5584, lon: 117.7348, type: "历史", duration: "3-4小时", season: "春秋季", price: "160元（含夜场）", time: "全天开放", hot: "🔥热门", tips: "强烈建议夜游，灯火璀璨，船妹子摇橹歌声悠扬，别有风情。", desc: "台儿庄古城坐落于京杭大运河畔，被世界旅游组织称为活着的古运河。城内拥有3公里古运河河道，夜晚灯火璀璨，船妹子摇橹歌声悠扬，是江北水乡的代表。" },
+                { city: "东营", name: "黄河口生态区", lat: 37.7650, lon: 118.9812, type: "生态", duration: "3-4小时", season: "秋季", price: "60元（含观光车）", time: "08:00-17:00", hot: "🌸季节限定", tips: "秋季（10-11月）芦花飞雪，是最佳观赏季节，建议携带长焦相机。", desc: "黄河口生态区位于黄河入海口，可以观赏到黄蓝交汇的奇观。秋季芦花飞雪，数百万只候鸟在此栖息，被称为鸟类国际机场，是生态摄影的天堂。" },
+                { city: "烟台", name: "蓬莱阁", lat: 37.8139, lon: 120.7512, type: "文化", duration: "2-3小时", season: "夏季", price: "100元", time: "08:00-18:00", hot: "⭐经典", tips: "登阁远眺长山列岛，感受人间仙境的意境。", desc: "蓬莱阁始建于北宋，与黄鹤楼、岳阳楼、滕王阁并称中国古代四大名楼。因八仙过海的传说和海市蜃楼的奇观闻名海内外，素有人间仙境的美誉。" },
+                { city: "潍坊", name: "青州古城", lat: 36.6853, lon: 118.4801, type: "历史", duration: "2-3小时", season: "春秋季", price: "免费（部分景点收费）", time: "全天开放", hot: "⭐经典", tips: "漫步昭德古街，品味原汁原味的北方古城生活。", desc: "青州为古九州之一，有7000余年的文明史。古城内保存有偶园、阜财门、昭德古街等大量明清建筑，漫步青石板路可品味原汁原味的北方古城生活。" },
+                { city: "济宁", name: "曲阜三孔", lat: 35.5967, lon: 116.9932, type: "文化", duration: "3-4小时", season: "四季皆宜", price: "140元（联票）", time: "08:00-17:00", hot: "🔥热门", tips: "建议请一位导游讲解，深入了解儒家文化内涵。", desc: "曲阜三孔包括孔庙、孔府、孔林，1994年被列入世界文化遗产。孔庙是历代帝王祭祀孔子的庙宇，建筑宏伟；孔府是孔子嫡系后代居住的府邸；孔林是延续时间最长的家族墓地。" },
+                { city: "泰安", name: "泰山", lat: 36.2520, lon: 117.1131, type: "自然", duration: "1天", season: "春秋季", price: "115元（旺季）", time: "全天开放", hot: "🔥热门", tips: "建议夜爬泰山看日出，或乘坐缆车上山步行下山，穿舒适运动鞋。", desc: "泰山有五岳独尊之称，是首个世界文化与自然双重遗产。古代帝王在此举行封禅大典。日出云海、晚霞夕照、黄河金带是泰山四大奇观，泰山石刻堪称中国书法艺术的宝库。" },
+                { city: "威海", name: "刘公岛", lat: 37.5010, lon: 122.1926, type: "历史", duration: "2-3小时", season: "夏季", price: "130元（含船票）", time: "08:00-17:30", hot: "⭐经典", tips: "乘船上岛，游览北洋水师提督署，铭记甲午历史。", desc: "刘公岛是甲午战争的见证者，岛上保留着北洋水师提督署、水师学堂等历史建筑。岛上森林覆盖率达87%，有海上仙山的美誉，登岛可俯瞰威海湾全景。" },
+                { city: "日照", name: "万平口", lat: 35.4147, lon: 119.5638, type: "海滨", duration: "2-3小时", season: "夏季", price: "免费", time: "全天开放", hot: "🌊海滨", tips: "清晨观海上日出，景色壮阔，是摄影爱好者的天堂。", desc: "万平口海滨风景区是日照的城市会客厅，拥有5公里优质沙滩，沙细水清，是蓝天、碧海、金沙滩的代表。清晨观海上日出，景色壮阔，令人心旷神怡。" },
+                { city: "临沂", name: "沂蒙山", lat: 35.5705, lon: 117.9426, type: "自然", duration: "1天", season: "春秋季", price: "100元", time: "08:00-17:00", hot: "🌸季节限定", tips: "春季山花烂漫，秋季层林尽染，适合登山徒步。", desc: "沂蒙山是世界地质公园，国家5A级景区，被誉为天然氧吧。主峰龟蒙顶海拔1156米，是山东第二高峰。这里是沂蒙精神发源地，红色文化与自然风光完美融合。" },
+                { city: "德州", name: "董子园", lat: 37.4542, lon: 116.3557, type: "文化", duration: "1-2小时", season: "四季皆宜", price: "免费", time: "08:30-17:30", hot: "📚文化", tips: "适合静心游览，感受国学文化氛围。", desc: "董子园是为纪念西汉大儒董仲舒而建，董仲舒提出罢黜百家，独尊儒术，对中华文化影响深远。园内湖光潋滟，亭台楼阁，是感受国学文化的好去处。" },
+                { city: "聊城", name: "东昌湖", lat: 36.4600, lon: 115.9676, type: "生态", duration: "2-3小时", season: "春秋季", price: "免费（游船另收费）", time: "全天开放", hot: "⭐经典", tips: "乘画舫游湖，欣赏城中有湖、湖中有城的独特景观。", desc: "东昌湖又名胭脂湖，是北方最大的城市内陆湖泊，有北方西湖之称。湖水环绕聊城古城，形成城中有湖、湖中有城的独特格局，光岳楼矗立在古城中央。" },
+                { city: "滨州", name: "魏集古村落", lat: 37.1556, lon: 117.6158, type: "历史", duration: "2-3小时", season: "春秋季", price: "免费", time: "08:00-18:00", hot: "🏮民俗", tips: "可体验传统手工艺制作，适合亲子游玩。", desc: "魏集古村落位于黄河岸边，是一处复原明清鲁北民居风貌的古镇。景区内可体验传统豆腐、酿酒、织布等工艺，每逢节假日有绣楼招亲、古彩戏法等民俗表演。" },
+                { city: "菏泽", name: "曹州牡丹园", lat: 35.2298, lon: 115.4667, type: "生态", duration: "2-3小时", season: "春季（4月）", price: "60元（花期）", time: "07:30-18:00", hot: "🌸季节限定", tips: "4月中旬为最佳观赏期，建议早晨前往，牡丹带露水更美。", desc: "曹州牡丹园是世界面积最大、品种最多的牡丹园，有牡丹品种1200余个。每年4月中旬至5月上旬为牡丹花期，红白粉紫黑各色牡丹争奇斗艳，国色天香。" }
+            ];
+
+            // ============================================================
+            // 2. 初始化地图
+            // ============================================================
+            var map = new Map({ basemap: "arcgis/streets" });
+            var view = new MapView({
+                container: "viewDiv", map: map,
+                center: [118.0, 36.5], zoom: 7.5,
+                constraints: { minZoom: 7, maxZoom: 12 },
+                popup: { dockEnabled: true, dockOptions: { buttonEnabled: false, position: "top-right" } }
+            });
+
+            var tourismLayer = new GraphicsLayer({ id: "attractions" });
+            map.add(tourismLayer);
+            var graphicItems = [];
+            var routeLayer = new GraphicsLayer({ id: "routes" });
+            map.add(routeLayer);
+
+            // ============================================================
+            // 3. 弹窗模板（无“加入行程”按钮）
+            // ============================================================
+            var popupTemplate = new PopupTemplate({
+                title: "{city} · {name} {hot}",
+                content: '<div class="popup-content">' +
+                         '  <span class="type-badge">{type}</span>' +
+                         '  <p class="desc-text">{desc}</p>' +
+                         '  <p class="meta-text">⏱️ {duration} ｜ 🌤️ {season}</p>' +
+                         '  <p class="meta-text">🎫 {price} ｜ 🕐 {time}</p>' +
+                         '  <p class="meta-text">💡 小贴士：{tips}</p>' +
+                         '  <p class="coord-text">📍 {lon}°E, {lat}°N</p>' +
+                         '</div>',
+                fieldInfos: [
+                    { fieldName: "city" }, { fieldName: "name" }, { fieldName: "type" },
+                    { fieldName: "desc" }, { fieldName: "duration" }, { fieldName: "season" },
+                    { fieldName: "price" }, { fieldName: "time" }, { fieldName: "tips" },
+                    { fieldName: "hot" }, { fieldName: "lon" }, { fieldName: "lat" }
+                ]
+            });
+
+            // ============================================================
+            // 4. 创建景点
+            // ============================================================
+            function createAttractions(data) {
+                tourismLayer.removeAll();
+                graphicItems = [];
+                data.forEach(function(spot) {
+                    var point = new Point({ longitude: spot.lon, latitude: spot.lat });
+                    var markerSymbol = new SimpleMarkerSymbol({
+                        color: [255, 69, 58, 0.9], size: 14,
+                        outline: { color: [255, 193, 7, 1], width: 2 }, style: "circle"
+                    });
+                    var labelSymbol = new TextSymbol({
+                        text: spot.name, color: "white",
+                        font: { size: 12, weight: "bold" },
+                        haloColor: "rgba(0,0,0,0.8)", haloSize: 3, yOffset: 18
+                    });
+                    var graphic = new Graphic({
+                        geometry: point, symbol: markerSymbol,
+                        attributes: {
+                            city: spot.city, name: spot.name,
+                            type: spot.type, desc: spot.desc,
+                            duration: spot.duration, season: spot.season,
+                            price: spot.price, time: spot.time,
+                            tips: spot.tips, hot: spot.hot,
+                            lat: spot.lat.toFixed(4), lon: spot.lon.toFixed(4)
+                        },
+                        popupTemplate: popupTemplate
+                    });
+                    tourismLayer.add(graphic);
+                    tourismLayer.add(new Graphic({ geometry: point, symbol: labelSymbol }));
+                    graphicItems.push({
+                        graphic: graphic,
+                        city: spot.city, name: spot.name,
+                        lat: spot.lat, lon: spot.lon,
+                        desc: spot.desc, type: spot.type,
+                        duration: spot.duration, season: spot.season,
+                        price: spot.price, time: spot.time,
+                        tips: spot.tips, hot: spot.hot
+                    });
+                });
+                updateList(graphicItems);
+                updateStats(graphicItems);
+            }
+
+            createAttractions(allAttractions);
+
+            // ============================================================
+            // 5. 筛选
+            // ============================================================
+            document.getElementById('typeFilter').addEventListener('change', function() {
+                var selected = this.value;
+                var filtered = (selected === 'all') ? allAttractions : allAttractions.filter(function(a) { return a.type === selected; });
+                createAttractions(filtered);
+                routeLayer.removeAll();
+                document.getElementById('routeDetail').classList.remove('show');
+            });
+
+            // ============================================================
+            // 6. 更新列表和统计
+            // ============================================================
+            function updateList(items) {
+                var container = document.getElementById('attractionsList');
+                container.innerHTML = '';
+                items.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.className = 'list-item';
+                    div.textContent = item.city + '·' + item.name;
+                    div.addEventListener('click', function() {
+                        view.goTo({ center: [item.lon, item.lat], zoom: 11, speed: 0.8 });
+                        view.popup.open({ features: [item.graphic], location: item.graphic.geometry });
+                    });
+                    container.appendChild(div);
+                });
+            }
+
+            function updateStats(items) {
+                var total = items.length;
+                var cities = new Set(items.map(function(a) { return a.city; })).size;
+                var types = new Set(items.map(function(a) { return a.type; })).size;
+                document.getElementById('statsText').innerHTML =
+                    '🏷️ 景点：<span>' + total + '</span> 个 ｜ 城市：<span>' + cities + '</span> 个 ｜ 类型：<span>' + types + '</span> 种';
+            }
+
+            // ============================================================
+            // 7. 路线数据（7条）
+            // ============================================================
+            var allRoutes = {
+                '🏛️ 齐鲁文化深度游': {
+                    spots: ['趵突泉', '泰山', '曲阜三孔', '青州古城'],
+                    desc: '穿越千年，感受齐鲁大地的文化底蕴。从泉城济南到五岳之尊泰山，再到儒家圣地曲阜和千年古城青州。',
+                    days: '4天3晚',
+                    tips: ['第1天：济南趵突泉、大明湖、芙蓉街，住济南', '第2天：登泰山（缆车上山，步行下山），住泰安', '第3天：曲阜三孔（孔庙→孔府→孔林），住曲阜', '第4天：青州古城（偶园、昭德古街），返程']
+                },
+                '🌊 仙境海岸之旅': {
+                    spots: ['栈桥', '蓬莱阁', '刘公岛', '万平口'],
+                    desc: '沿着山东最美的海岸线，从青岛出发，经烟台、威海到日照，一路碧海蓝天。',
+                    days: '5天4晚',
+                    tips: ['第1天：青岛栈桥、八大关，住青岛', '第2天：烟台蓬莱阁，住烟台', '第3天：威海刘公岛，住威海', '第4天：日照万平口，住日照', '第5天：日照海滨森林公园，返程']
+                },
+                '🏔️ 山岳朝圣之旅': {
+                    spots: ['泰山', '沂蒙山', '趵突泉'],
+                    desc: '登五岳之尊泰山，游天然氧吧沂蒙山，再品泉城济南的灵动泉水。',
+                    days: '4天3晚',
+                    tips: ['第1天：济南趵突泉、大明湖，住济南', '第2天：登泰山（日出云海），住泰安', '第3天：泰安→临沂，沂蒙山（龟蒙顶），住临沂', '第4天：沂蒙山（森林栈道），返程']
+                },
+                '🌸 花开齐鲁之旅': {
+                    spots: ['曹州牡丹园', '趵突泉', '泰山'],
+                    desc: '春季限定！在牡丹花海中感受国色天香，再登泰山一览众山小。',
+                    days: '3天2晚',
+                    tips: ['第1天：菏泽曹州牡丹园（4月花期），住菏泽', '第2天：菏泽→济南，趵突泉，住济南', '第3天：登泰山，返程']
+                },
+                '🏺 齐文化探索之旅': {
+                    spots: ['周村古商城', '青州古城', '东昌湖'],
+                    desc: '从鲁商发祥地周村到千年古城青州，再到北方西湖东昌湖，感受齐国故地风情。',
+                    days: '3天2晚',
+                    tips: ['第1天：淄博周村古商城，住淄博', '第2天：青州古城，住青州', '第3天：聊城东昌湖、光岳楼，返程']
+                },
+                '🌿 黄河生态之旅': {
+                    spots: ['黄河口生态区', '魏集古村落', '东昌湖'],
+                    desc: '沿黄河入海口逆流而上，感受湿地生态与古村落风情。',
+                    days: '3天2晚',
+                    tips: ['第1天：东营黄河口生态区，住东营', '第2天：滨州魏集古村落，住滨州', '第3天：聊城东昌湖，返程']
+                },
+                '🗺️ 山东全景大环线': {
+                    spots: ['趵突泉', '泰山', '曲阜三孔', '栈桥', '蓬莱阁', '刘公岛', '万平口', '沂蒙山', '青州古城', '周村古商城', '东昌湖', '黄河口生态区', '魏集古村落', '曹州牡丹园', '董子园', '台儿庄古城'],
+                    desc: '一次走遍全部16个地市，涵盖山岳、文化、海岸、生态、历史五大主题。',
+                    days: '12天11晚',
+                    tips: ['第1天：济南趵突泉', '第2天：登泰山', '第3天：曲阜三孔', '第4天：台儿庄古城', '第5天：曹州牡丹园', '第6天：东昌湖', '第7天：董子园', '第8天：魏集古村落', '第9天：黄河口', '第10天：周村古商城、青州古城', '第11天：栈桥、蓬莱阁', '第12天：刘公岛、万平口、沂蒙山']
+                }
+            };
+
+            // ============================================================
+            // 8. 绘制路线
+            // ============================================================
+            function drawRoute(routeKey) {
+                routeLayer.removeAll();
+                var route = allRoutes[routeKey];
+                if (!route) return;
+                var points = [];
+                var found = [];
+                route.spots.forEach(function(name) {
+                    var item = graphicItems.find(function(g) { return g.name === name; });
+                    if (item) { points.push([item.lon, item.lat]); found.push(name); }
+                });
+                if (points.length < 2) { alert('路线需要至少2个景点'); return; }
+                var polyline = new Polyline({ paths: [points], spatialReference: { wkid: 4326 } });
+                routeLayer.add(new Graphic({
+                    geometry: polyline,
+                    symbol: new SimpleLineSymbol({ color: [255, 87, 34], width: 4, style: 'solid' })
+                }));
+                var startP = new Point({ longitude: points[0][0], latitude: points[0][1] });
+                var endP = new Point({ longitude: points[points.length-1][0], latitude: points[points.length-1][1] });
+                routeLayer.add(new Graphic({
+                    geometry: startP,
+                    symbol: new SimpleMarkerSymbol({ color: [76, 175, 80], size: 20, outline: { color: 'white', width: 2 }, style: 'diamond' })
+                }));
+                routeLayer.add(new Graphic({
+                    geometry: endP,
+                    symbol: new SimpleMarkerSymbol({ color: [244, 67, 54], size: 20, outline: { color: 'white', width: 2 }, style: 'cross' })
+                }));
+                view.goTo({ target: polyline.extent, padding: 50, duration: 1000 });
+                var detailDiv = document.getElementById('routeDetail');
+                var tipHtml = route.tips.map(function(t) { return '• ' + t; }).join('<br>');
+                document.getElementById('routeDetailTitle').textContent = '🗺️ ' + routeKey + '（' + route.days + '）';
+                document.getElementById('routeDetailContent').innerHTML =
+                    '<p><strong>📌 路线特色</strong><br>' + route.desc + '</p>' +
+                    '<p><strong>📍 途经景点（' + found.length + '个）</strong><br>' + found.join(' → ') + '</p>' +
+                    '<p><strong>📅 每日行程</strong><br>' + tipHtml + '</p>' +
+                    '<p style="font-size:12px; color:#888; margin-top:6px;">💡 绿色菱形=起点 | 红色叉号=终点</p>';
+                detailDiv.classList.add('show');
+            }
+
+            // ============================================================
+            // 9. 搜索、随机、测距、底图切换
+            // ============================================================
+            var searchInput = document.getElementById('searchInput');
+            var searchBtn = document.getElementById('searchBtn');
+            function searchLocation() {
+                var keyword = searchInput.value.trim();
+                if (!keyword) { alert('请输入城市名或景点名'); return; }
+                var matched = graphicItems.find(function(item) {
+                    return item.name === keyword || item.city === keyword;
+                });
+                if (!matched) matched = graphicItems.find(function(item) {
+                    return item.name.includes(keyword) || item.city.includes(keyword);
+                });
+                if (matched) {
+                    view.goTo({ center: [matched.lon, matched.lat], zoom: 11, speed: 0.8 });
+                    view.popup.open({ features: [matched.graphic], location: matched.graphic.geometry });
+                } else {
+                    alert('未找到 "' + keyword + '"，请尝试其他关键词');
+                }
+            }
+            searchBtn.addEventListener('click', searchLocation);
+            searchInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchLocation(); });
+
+            document.getElementById('randomBtn').addEventListener('click', function() {
+                if (graphicItems.length === 0) { alert('当前没有景点'); return; }
+                var idx = Math.floor(Math.random() * graphicItems.length);
+                var item = graphicItems[idx];
+                view.goTo({ center: [item.lon, item.lat], zoom: 11, speed: 0.8 });
+                view.popup.open({ features: [item.graphic], location: item.graphic.geometry });
+            });
+
+            var measureWidget = null;
+            var measureBtn = document.getElementById('measureBtn');
+            function toggleMeasure() {
+                if (measureWidget) {
+                    measureWidget.destroy(); measureWidget = null;
+                    measureBtn.classList.remove('active-measure');
+                    return;
+                }
+                measureWidget = new DistanceMeasurement2D({ view: view, unit: 'metric' });
+                view.ui.add(measureWidget, 'top-right');
+                measureBtn.classList.add('active-measure');
+            }
+            measureBtn.addEventListener('click', toggleMeasure);
+
+            // 底图切换：街道 ↔ 地形
+            var basemapIndex = 0;
+            var basemaps = ['arcgis/streets', 'arcgis/topographic'];
+            var basemapLabels = ['🗺️ 街道', '⛰️ 地形'];
+            document.getElementById('basemapBtn').addEventListener('click', function() {
+                basemapIndex = (basemapIndex + 1) % basemaps.length;
+                map.basemap = basemaps[basemapIndex];
+                this.textContent = basemapLabels[basemapIndex];
+            });
+
+            // ============================================================
+            // 10. 路线UI绑定
+            // ============================================================
+            var routeSelector = document.getElementById('routeSelector');
+            document.getElementById('routeToggleBtn').addEventListener('click', function() {
+                routeSelector.classList.toggle('show');
+            });
+            document.getElementById('routeCloseBtn').addEventListener('click', function() {
+                routeSelector.classList.remove('show');
+            });
+            document.querySelectorAll('.route-option').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    drawRoute(el.getAttribute('data-route'));
+                    routeSelector.classList.remove('show');
+                    if (measureWidget) { measureWidget.destroy(); measureWidget = null; measureBtn.classList.remove('active-measure'); }
+                });
+            });
+            document.getElementById('closeRouteDetail').addEventListener('click', function() {
+                document.getElementById('routeDetail').classList.remove('show');
+                routeLayer.removeAll();
+            });
+
+            // ============================================================
+            // 11. Toast（保留给可能的消息）
+            // ============================================================
+            function showToast(msg) {
+                var toast = document.getElementById('toast');
+                toast.textContent = msg;
+                toast.classList.add('show');
+                setTimeout(function() { toast.classList.remove('show'); }, 3000);
+            }
+
+            console.log('✅ 地图加载完成，共 ' + allAttractions.length + ' 个景点，所有功能可用');
+        });
+    </script>
+</head>
+<body>
+    <div id="viewDiv"></div>
+
+    <!-- 左侧面板 -->
+    <div class="left-panel">
+        <h1>🏔️ 好客山东 · 齐鲁胜景</h1>
+        <div class="sub">16地市代表性景点 | 点击查看详情</div>
+        <div class="attractions-list" id="attractionsList"></div>
+    </div>
+
+    <!-- 搜索栏 -->
+    <div class="search-panel">
+        <input type="text" id="searchInput" placeholder="搜索城市或景点" autocomplete="off">
+        <select id="typeFilter">
+            <option value="all">全部类型</option>
+            <option value="文化">文化</option>
+            <option value="自然">自然</option>
+            <option value="海滨">海滨</option>
+            <option value="历史">历史</option>
+            <option value="生态">生态</option>
+        </select>
+        <button id="searchBtn">🔍 搜索</button>
+    </div>
+
+    <!-- 右下角按钮 -->
+    <div class="button-group">
+        <button id="randomBtn" class="action-btn">🎲 随机</button>
+        <button id="measureBtn" class="action-btn">📏 测距</button>
+        <button id="basemapBtn" class="action-btn basemap-btn">🗺️ 街道</button>
+        <button id="routeToggleBtn" class="action-btn route-btn">🗺️ 路线</button>
+    </div>
+
+    <!-- 路线选择 -->
+    <div class="route-selector" id="routeSelector">
+        <span class="route-close" id="routeCloseBtn">✕</span>
+        <h4>🗺️ 推荐路线（7条）</h4>
+        <div class="route-option" data-route="🏛️ 齐鲁文化深度游">🏛️ 齐鲁文化深度游 <span class="route-days">4天</span></div>
+        <div class="route-option" data-route="🌊 仙境海岸之旅">🌊 仙境海岸之旅 <span class="route-days">5天</span></div>
+        <div class="route-option" data-route="🏔️ 山岳朝圣之旅">🏔️ 山岳朝圣之旅 <span class="route-days">4天</span></div>
+        <div class="route-option" data-route="🌸 花开齐鲁之旅">🌸 花开齐鲁之旅 <span class="route-days">3天</span></div>
+        <div class="route-option" data-route="🏺 齐文化探索之旅">🏺 齐文化探索之旅 <span class="route-days">3天</span></div>
+        <div class="route-option" data-route="🌿 黄河生态之旅">🌿 黄河生态之旅 <span class="route-days">3天</span></div>
+        <div class="route-option" data-route="🗺️ 山东全景大环线" style="border-left-color: #FFC107;">🗺️ 山东全景大环线 <span class="route-days">12天</span></div>
+    </div>
+
+    <!-- 路线详情 -->
+    <div class="route-detail" id="routeDetail">
+        <span class="close-detail" id="closeRouteDetail">✕</span>
+        <h4 id="routeDetailTitle">🗺️ 路线详情</h4>
+        <div id="routeDetailContent"></div>
+    </div>
+
+    <!-- 统计 -->
+    <div class="stats" id="statsText">
+        🏷️ 景点：<span>16</span> 个 ｜ 城市：<span>16</span> 个 ｜ 类型：<span>5</span> 种
+    </div>
+
+    <!-- 提示 -->
+    <div class="tooltip-note">
+        💡 点击红色标记查看详情 ｜ 支持筛选、搜索、随机、测距、路线规划、底图切换<br>
+        <strong>全景大环线覆盖全部16城</strong>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+</body>
+</html>
